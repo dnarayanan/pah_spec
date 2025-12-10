@@ -5,6 +5,7 @@ import numpy as np
 from numpy import exp
 import os
 import pandas as pd
+# from scipy.integrate import trapezoid
 from scipy.integrate import trapezoid
 from scipy import interpolate
 
@@ -20,12 +21,14 @@ GRAIN_SIZES = [3.5481e-04, 3.7584e-04, 3.9811e-04, 4.2170e-04, 4.4668e-04,
  5.3088e-03, 5.6234e-03, 5.9566e-03, 6.3096e-03, 6.683E-03, 7.079E-03, 
  7.499E-03, 7.943E-03, 8.414E-03, 8.913E-03, 9.441E-03, 1.00E-02] * u.um
 
+#GRAIN_SIZES = 10 ** (np.linspace(np.log10(0.0004), 0, 16)[0:3]) * u.um
+
 _DELTA_LAMBDA = 0.01
 
 
 class PahSpec:
 
-    def __init__(self, basis_directory="../data/basis_spectra", c_abs_data_directory="../data/c_abs_data"):
+    def __init__(self, basis_directory="../../data/basis_spectra", c_abs_data_directory="../../data/c_abs_data"):
         # Path of pah_spec.py
         script_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,7 +64,37 @@ class PahSpec:
         self.cabs_graphite_spl = interpolate.RectBivariateSpline(rad_graphite.value, wav_graphite.value, cabs_graphite.value)
 
         # Load the default size distribution and ionization function into memory (std. dn/da, st. f_ion; Draine et al. 2021)
-        _, self.size_dist_neu, self.size_dist_ion = _read_size_dist(script_path)
+        # _, self.size_dist_neu, self.size_dist_ion = _read_size_dist(script_path)
+
+        def size_car(rad):
+            # From Hensley & Draine (2023)
+            B1 = 7.52e-7
+            B2 = 8.09e-10
+            amin = 4.0 * u.AA
+            a01 = 4.0 * u.AA
+            a02 = 30 * u.AA
+            sigma1 = 0.40
+            sigma2 = 0.40    
+            car1 = (B1 / rad) * np.exp(-0.5 * (np.log(rad / a01) / sigma1) ** 2)
+            car2 = (B2 / rad) * np.exp(-0.5 * (np.log(rad / a02) / sigma2) ** 2)
+            
+            dnda = car1 + car2
+            dnda[rad < amin] = 0.
+            return dnda
+        
+        def f_ion_func(rad):
+            # From Hensley & Draine (2023)
+            a_h = 10 * u.AA  # standard ionization 
+            fion = 1. - 1. / (1. + rad / a_h)
+            return fion
+        
+        dlna = 0.0576
+        dnda_pah = size_car(GRAIN_SIZES)
+        dn_PAH = dnda_pah * GRAIN_SIZES * dlna
+        f_ion = f_ion_func(GRAIN_SIZES)
+        
+        self.size_dist_neu = dn_PAH * (1 - f_ion)
+        self.size_dist_ion = dn_PAH * f_ion
 
         # Load the default radiation field into memory (U=1 mMMP ISRF; Draine 2011)
         self.wavelength_u_arr, self.u_lambda_arr = _read_radiation_field(script_path)
@@ -916,7 +949,7 @@ def _read_basis_spectra(basis_directory):
 
 
 def _read_size_dist(script_path):
-    data_path = os.path.join(script_path, "../data/defaults/")
+    data_path = os.path.join(script_path, "../../data/defaults/")
 
     df = pd.read_csv(os.path.join(data_path, "pahspec_dnda.out_st_std"), sep="\\s+", skiprows=1)
     rad = df["rad"].to_numpy() * u.um
@@ -927,7 +960,7 @@ def _read_size_dist(script_path):
 
 
 def _read_radiation_field(script_path):
-    data_path = os.path.join(script_path, "../data/defaults/")
+    data_path = os.path.join(script_path, "../../data/defaults/")
 
     df = pd.read_csv(os.path.join(data_path, "isrf_mmpisrf_0.00"), sep="\\s+", skiprows=6)
     wavelength_arr_u = df["(um)"].to_numpy() * u.um        

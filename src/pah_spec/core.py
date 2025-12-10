@@ -28,7 +28,7 @@ _DELTA_LAMBDA = 0.01
 
 class PahSpec:
 
-    def __init__(self, basis_directory="./data/basis_spectra", c_abs_data_directory="./data/c_abs_data"):
+    def __init__(self, basis_directory="../../data/basis_spectra", c_abs_data_directory="../../data/c_abs_data"):
         # Path of pah_spec.py
         script_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -949,7 +949,7 @@ def _read_basis_spectra(basis_directory):
 
 
 def _read_size_dist(script_path):
-    data_path = os.path.join(script_path, "./data/defaults/")
+    data_path = os.path.join(script_path, "../../data/defaults/")
 
     df = pd.read_csv(os.path.join(data_path, "pahspec_dnda.out_st_std"), sep="\\s+", skiprows=1)
     rad = df["rad"].to_numpy() * u.um
@@ -960,7 +960,7 @@ def _read_size_dist(script_path):
 
 
 def _read_radiation_field(script_path):
-    data_path = os.path.join(script_path, "./data/defaults/")
+    data_path = os.path.join(script_path, "../../data/defaults/")
 
     df = pd.read_csv(os.path.join(data_path, "isrf_mmpisrf_0.00"), sep="\\s+", skiprows=6)
     wavelength_arr_u = df["(um)"].to_numpy() * u.um        
